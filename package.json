@@ -1,0 +1,24 @@
+{
+	"name": "adder-infinity",
+	"version": "0.0.1",
+	"manufacturer": "Adder",
+	"product": "Infinity KVM",
+	"shortname": "adder",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/llamafilm/companion-module-adder-infinity.git"
+	},
+	"author": "Elliott C. Balsley <ebalsley@netflix.com>",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/llamafilm/companion-module-adder-infinity/issues"
+	},
+	"homepage": "https://github.com/llamafilm/companion-module-adder-infinity#readme",
+	"dependencies": {
+		"xml2js": "~0.4"
+	}
+}
