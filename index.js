@@ -28,15 +28,30 @@ class instance extends instance_skel {
 
 	updateConfig(config) {
 		this.config = config
+		this.restOptions = {
+			connection: {
+				rejectUnauthorized: this.config.rejectUnauthorized,
+			},
+		}
 		this.init_adder()
+		this.status(this.STATE_OK)
 	}
 
 	init() {
+		this.restOptions = {
+			connection: {
+				rejectUnauthorized: this.config.rejectUnauthorized,
+			},
+		}
+
+		this.restHeaders = {}
+
 		this.init_adder()
 		this.status(this.STATE_OK)
 	}
 
 	init_adder() {
+		this.log('debug', 'Logging into AIM')
 		this.host = (this.config.https ? 'https://' : 'http://') + this.config.aim_ip + '/api'
 		// login to get auth token
 		let url = this.host + '?v=1&method=login'
@@ -52,7 +67,7 @@ class instance extends instance_skel {
 					xml2js.parseString(xml, function(e, result) {						
 						if (result.api_response.token != undefined) {
 							self.auth_token = result.api_response.token[0]
-							self.debug('Logged in using token:', self.auth_token)
+							//self.debug('Logged in using token:', self.auth_token)
 						}
 					})
 				}
@@ -61,6 +76,7 @@ class instance extends instance_skel {
 					this.status(this.STATUS_ERROR)
 				}
 				// get channels
+				this.log('debug', 'Refreshing channel names')
 				let url = this.host + `?v=2&method=get_channels&token=${this.auth_token}`
 				this.system.emit('rest_get', url, (err, result) => {
 					if (err !== null) {
@@ -78,9 +94,10 @@ class instance extends instance_skel {
 							self.actions() // rebuild names list
 						})
 					}				
-				})
+				}, this.restHeaders, this.restOptions)
 
 				// get receivers
+				this.log('debug', 'Refreshing receiver names')
 				url = this.host + `?v=2&method=get_devices&device_type=rx&token=${this.auth_token}`
 				this.system.emit('rest_get', url, (err, result) => {
 					if (err !== null) {
@@ -98,11 +115,9 @@ class instance extends instance_skel {
 							self.actions() // rebuild names list
 						})
 					}				
-				})
-
+				}, this.restHeaders, this.restOptions)
 			}
-		})
-
+		}, this.restHeaders, this.restOptions)
 	}
 
 	// Return config fields for web config
@@ -150,7 +165,6 @@ class instance extends instance_skel {
 				label: 'AIM password',
 				width: 12,
 			},
-			
 		]
 	}
 
@@ -161,8 +175,6 @@ class instance extends instance_skel {
 	}
 
 	actions() {
-		// console.log('line 163', this.channels)
-		// console.log('line 164', this.receivers)
 		this.setActions({
 			connectChannel: {
 				label: 'Connect Channel',
@@ -207,6 +219,20 @@ class instance extends instance_skel {
 		
 		switch (action.action) {
 			case 'connectChannel':
+				// lookup name
+				let rx_name, chan_name
+				this.receivers.forEach((rx) => {
+					if (rx.id == action.options.rx) {
+						rx_name = rx.label
+					}
+				})
+
+				this.channels.forEach((chan) => {
+					if (chan.id == action.options.chan) {
+						chan_name = chan.label
+					}
+				})
+			
 				// login to get auth token
 				let url = this.host + '?v=1&method=login'
 				this.system.emit('rest_get', url, (err, result) => {
@@ -221,7 +247,7 @@ class instance extends instance_skel {
 							xml2js.parseString(xml, function(e, result) {						
 								if (result.api_response.token != undefined) {
 									self.auth_token = result.api_response.token[0]
-									self.debug('Logged in using token:', self.auth_token)
+									//self.debug('Logged in using token:', self.auth_token)
 								}
 							})
 						}
@@ -232,7 +258,7 @@ class instance extends instance_skel {
 
 						// disconnect channel first
 						cmd = `${this.host}?v=5&method=disconnect_channel&token=${this.auth_token}&rx_id=${action.options.rx}&force=1`
-						this.debug(`Disconnecting receiver ${action.options.rx}`)
+						this.debug(`Disconnecting receiver ${rx_name}}`)
 						this.system.emit('rest_get', cmd, (err, result) => {
 							if (err !== null) {
 								this.log('error', err)
@@ -242,12 +268,13 @@ class instance extends instance_skel {
 								this.debug('Adder response:', xml)
 								let self = this
 								xml2js.parseString(xml, function(e, result) {
-									self.debug(result)
+									//self.debug(result)
 								})
 
 								// connect channel
+								this.debug(`Connecting ${rx_name} to ${chan_name}`)
+								this.log('info', `Connecting ${rx_name} to ${chan_name}`)
 								cmd = `${this.host}?v=5&method=connect_channel&token=${this.auth_token}&c_id=${action.options.chan}&rx_id=${action.options.rx}&mode=${action.options.mode}`
-								this.debug(`Connecting receiver ${action.options.rx} to ${action.options.chan}`)
 								this.system.emit('rest_get', cmd, (err, result) => {
 									if (err !== null) {
 										this.log('error', err)
@@ -257,14 +284,14 @@ class instance extends instance_skel {
 										this.debug('Adder response:', xml)
 										let self = this
 										xml2js.parseString(xml, function(e, result) {
-											self.debug(result)
+											//self.debug(result)
 										})
 									}				
-								})
+								}, this.restHeaders, this.restOptions)
 							}				
-						})
+						}, this.restHeaders, this.restOptions)
 					}
-				})
+				}, this.restHeaders, this.restOptions)
 
 				break
 		}
